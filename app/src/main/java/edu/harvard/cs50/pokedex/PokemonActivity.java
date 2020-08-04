@@ -1,10 +1,14 @@
 package edu.harvard.cs50.pokedex;
 
-import androidx.appcompat.app.AppCompatActivity;
-
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.View;
+import android.widget.Button;
 import android.widget.TextView;
+
+import androidx.appcompat.app.AppCompatActivity;
 
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
@@ -17,6 +21,8 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.Locale;
+
 public class PokemonActivity extends AppCompatActivity {
     private TextView nameTextView;
     private TextView numberTextView;
@@ -24,6 +30,9 @@ public class PokemonActivity extends AppCompatActivity {
     private TextView type2TextView;
     private String url;
     private RequestQueue requestQueue;
+    private Button catchButton;
+    private boolean catched;
+    private SharedPreferences sharedPreferences;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -36,7 +45,9 @@ public class PokemonActivity extends AppCompatActivity {
         numberTextView = findViewById(R.id.pokemon_number);
         type1TextView = findViewById(R.id.pokemon_type1);
         type2TextView = findViewById(R.id.pokemon_type2);
+        catchButton = findViewById(R.id.catch_button);
 
+        sharedPreferences = getSharedPreferences("MyPREFERENCES", Context.MODE_PRIVATE);
         load();
     }
 
@@ -49,7 +60,10 @@ public class PokemonActivity extends AppCompatActivity {
             public void onResponse(JSONObject response) {
                 try {
                     nameTextView.setText(response.getString("name"));
-                    numberTextView.setText(String.format("#%03d", response.getInt("id")));
+                    numberTextView.setText(String.format(Locale.US, "#%03d", response.getInt("id")));
+
+                    catched = sharedPreferences.getBoolean(numberTextView.getText().toString(), false);
+                    setButtonText(catched);
 
                     JSONArray typeEntries = response.getJSONArray("types");
                     for (int i = 0; i < typeEntries.length(); i++) {
@@ -76,5 +90,25 @@ public class PokemonActivity extends AppCompatActivity {
         });
 
         requestQueue.add(request);
+    }
+
+    public void toggleCatch(View view) {
+        catched = !catched;
+        saveState(numberTextView.getText().toString(), catched);
+        setButtonText(catched);
+    }
+
+    private void saveState(String key, boolean value) {
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.putBoolean(key, value);
+        editor.apply();
+    }
+
+    private void setButtonText(boolean c) {
+        if (c) {
+            catchButton.setText(R.string.release_label);
+        } else {
+            catchButton.setText(R.string.catch_label);
+        }
     }
 }
