@@ -6,6 +6,8 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Filter;
+import android.widget.Filterable;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -24,10 +26,18 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 
-public class PokedexAdapter extends RecyclerView.Adapter<PokedexAdapter.PokedexViewHolder> {
+public class PokedexAdapter extends RecyclerView.Adapter<PokedexAdapter.PokedexViewHolder> implements Filterable {
+
+    private RequestQueue requestQueue;
+    private ArrayList<Pokemon> filtered = new ArrayList<>();
+    private ArrayList<Pokemon> pokemon = new ArrayList<>();
+
+    @Override
+    public Filter getFilter() {
+        return new PokemonFilter();
+    }
+
     public static class PokedexViewHolder extends RecyclerView.ViewHolder {
         public LinearLayout containerView;
         public TextView textView;
@@ -51,8 +61,29 @@ public class PokedexAdapter extends RecyclerView.Adapter<PokedexAdapter.PokedexV
         }
     }
 
-    private List<Pokemon> pokemon = new ArrayList<>();
-    private RequestQueue requestQueue;
+    private class PokemonFilter extends Filter {
+        @Override
+        protected FilterResults performFiltering(CharSequence constraint) {
+            ArrayList<Pokemon> filteredPokemon = new ArrayList<>();
+            FilterResults results = new FilterResults();
+            for (Pokemon name : pokemon) {
+                if (name.getName().toUpperCase().startsWith(constraint.toString().toUpperCase())) {
+                    filteredPokemon.add(name);
+                    results.values = filteredPokemon; // you need to create this variable!
+                    results.count = filteredPokemon.size();
+                }
+            }
+            return results;
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        protected void publishResults(CharSequence constraint, FilterResults results) {
+
+            filtered = (ArrayList<Pokemon>) results.values;
+            notifyDataSetChanged();
+        }
+    }
 
     PokedexAdapter(Context context) {
         requestQueue = Volley.newRequestQueue(context);
@@ -70,11 +101,12 @@ public class PokedexAdapter extends RecyclerView.Adapter<PokedexAdapter.PokedexV
                         JSONObject result = results.getJSONObject(i);
                         String name = result.getString("name");
                         pokemon.add(new Pokemon(
-                            name.substring(0, 1).toUpperCase() + name.substring(1),
-                            result.getString("url")
+                                name.substring(0, 1).toUpperCase() + name.substring(1),
+                                result.getString("url")
                         ));
                     }
-
+                    // initial filtered and complete list
+                    filtered = pokemon;
                     notifyDataSetChanged();
                 } catch (JSONException e) {
                     Log.e("cs50", "Json error", e);
@@ -101,13 +133,20 @@ public class PokedexAdapter extends RecyclerView.Adapter<PokedexAdapter.PokedexV
 
     @Override
     public void onBindViewHolder(@NonNull PokedexViewHolder holder, int position) {
-        Pokemon current = pokemon.get(position);
+
+        Pokemon current = filtered.get(position);
         holder.textView.setText(current.getName());
         holder.containerView.setTag(current);
     }
 
     @Override
     public int getItemCount() {
-        return pokemon.size();
+
+        //return pokemon.size();
+        if (filtered != null) {
+            return filtered.size();
+        } else {
+            return 0;
+        }
     }
 }
