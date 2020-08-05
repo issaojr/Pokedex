@@ -3,4 +3,5 @@
     <string name="search">Search</string>
     <string name="catch_label">Catch!</string>
     <string name="release_label">Release</string>
+    <string name="label_img">Pokemon Image Here!</string>
 </resources>
