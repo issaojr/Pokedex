@@ -1,5 +1,8 @@
 package edu.harvard.cs50.pokedex;
 
+/**
+ * Pokemon class
+ */
 public class Pokemon {
     private String name;
     private String url;

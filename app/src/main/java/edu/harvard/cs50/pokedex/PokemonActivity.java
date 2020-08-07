@@ -30,6 +30,9 @@ import java.io.IOException;
 import java.net.URL;
 import java.util.Locale;
 
+/**
+ * Class related to individual (selected) pokemon activity
+ */
 public class PokemonActivity extends AppCompatActivity {
     private TextView nameTextView;
     private TextView numberTextView;
@@ -41,7 +44,14 @@ public class PokemonActivity extends AppCompatActivity {
     private boolean catched;
     private SharedPreferences sharedPreferences;
     private ImageView pokemonImage;
+    private TextView descriptionTextView;
+    private int id;
 
+    /**
+     * Initializes all objects
+     *
+     * @param savedInstanceState <-- saved instance state
+     */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -55,25 +65,41 @@ public class PokemonActivity extends AppCompatActivity {
         type2TextView = findViewById(R.id.pokemon_type2);
         catchButton = findViewById(R.id.catch_button);
         pokemonImage = findViewById(R.id.pk_image);
+        descriptionTextView = findViewById(R.id.pokemon_description);
 
         sharedPreferences = getSharedPreferences("MyPREFERENCES", Context.MODE_PRIVATE);
         load();
     }
 
+    /**
+     * Main function of this method is to load a selected pokemon
+     * Secondly is made a request to obtain a descriptive text about each pokemon
+     */
     public void load() {
+
         type1TextView.setText("");
         type2TextView.setText("");
+
+        // Url of pokemon texts
+        final String urlDescription = "https://pokeapi.co/api/v2/pokemon-species/";
 
         JsonObjectRequest request = new JsonObjectRequest(Request.Method.GET, url, null, new Response.Listener<JSONObject>() {
             @Override
             public void onResponse(JSONObject response) {
                 try {
-                    nameTextView.setText(response.getString("name"));
-                    numberTextView.setText(String.format(Locale.US, "#%03d", response.getInt("id")));
+                    id = response.getInt("id");
 
+                    // calls a method to realize a second request
+                    loadDescription(urlDescription + id);
+
+                    nameTextView.setText(response.getString("name"));
+                    numberTextView.setText(String.format(Locale.US, "#%03d", id));
+
+                    // catch button is initialized
                     catched = sharedPreferences.getBoolean(numberTextView.getText().toString(), false);
                     setButtonText(catched);
 
+                    // getting data from the response json object
                     JSONArray typeEntries = response.getJSONArray("types");
                     for (int i = 0; i < typeEntries.length(); i++) {
                         JSONObject typeEntry = typeEntries.getJSONObject(i);
@@ -101,22 +127,66 @@ public class PokemonActivity extends AppCompatActivity {
                 Log.e("cs50", "Pokemon details error", error);
             }
         });
-
         requestQueue.add(request);
     }
 
+    /**
+     * A description is requested through this method
+     *
+     * @param url <-- API url for description text requests
+     */
+    public void loadDescription(final String url) {
+
+        JsonObjectRequest request = new JsonObjectRequest(Request.Method.GET, url, null, new Response.Listener<JSONObject>() {
+
+            @Override
+            public void onResponse(JSONObject response) {
+                try {
+                    JSONArray textEntries = response.getJSONArray("flavor_text_entries");
+                    JSONObject textEntry = textEntries.getJSONObject(0);
+                    // getting a little english text
+                    descriptionTextView.setText(textEntry.getString("flavor_text"));
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+            }
+        }, new Response.ErrorListener() {
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                Log.e("cs50", "Pokemon details error", error);
+            }
+        });
+        requestQueue.add(request);
+    }
+
+    /**
+     * Inverts catched variable state
+     *
+     * @param view <-- application view
+     */
     public void toggleCatch(View view) {
         catched = !catched;
         saveState(numberTextView.getText().toString(), catched);
         setButtonText(catched);
     }
 
+    /**
+     * saves new state on internal memory
+     *
+     * @param key   <-- key for persist state
+     * @param value <-- boolean value that represents pokemon state (catched/released)
+     */
     private void saveState(String key, boolean value) {
         SharedPreferences.Editor editor = sharedPreferences.edit();
         editor.putBoolean(key, value);
         editor.apply();
     }
 
+    /**
+     * changes button label
+     *
+     * @param c <-- boolean to set button label (release if true or catch! if false)
+     */
     private void setButtonText(boolean c) {
         if (c) {
             catchButton.setText(R.string.release_label);
@@ -125,6 +195,10 @@ public class PokemonActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * This async task is responsible for downloading a pokemon icon
+     * and for extract bitmap
+     */
     @SuppressLint("StaticFieldLeak")
     private class DownloadSpriteTask extends AsyncTask<String, Void, Bitmap> {
         @Override
@@ -138,6 +212,11 @@ public class PokemonActivity extends AppCompatActivity {
             }
         }
 
+        /**
+         * Bitmap is set to imageview placeholder
+         *
+         * @param bitmap <-- pokemon icon requested from API
+         */
         @Override
         protected void onPostExecute(Bitmap bitmap) {
             pokemonImage.setImageBitmap(bitmap);

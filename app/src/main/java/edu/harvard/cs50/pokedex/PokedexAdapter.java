@@ -27,10 +27,16 @@ import org.json.JSONObject;
 
 import java.util.ArrayList;
 
+/**
+ * This class is responsible for load pokemons from web API and
+ * for filtering selections
+ */
 public class PokedexAdapter extends RecyclerView.Adapter<PokedexAdapter.PokedexViewHolder> implements Filterable {
 
     private RequestQueue requestQueue;
+    // array of filtered pokemons form original list
     private ArrayList<Pokemon> filtered = new ArrayList<>();
+    // original list of pokemon with them all
     private ArrayList<Pokemon> pokemon = new ArrayList<>();
 
     @Override
@@ -38,6 +44,57 @@ public class PokedexAdapter extends RecyclerView.Adapter<PokedexAdapter.PokedexV
         return new PokemonFilter();
     }
 
+    /**
+     * Constructor
+     *
+     * @param context <-- application context
+     */
+    PokedexAdapter(Context context) {
+        requestQueue = Volley.newRequestQueue(context);
+        loadPokemon();
+    }
+
+    /**
+     * From this method PokedexAdaptar class make requests to Web API
+     * obtaining the list of pokemons
+     */
+    public void loadPokemon() {
+        String url = "https://pokeapi.co/api/v2/pokemon?limit=151";
+        JsonObjectRequest request = new JsonObjectRequest(Request.Method.GET, url, null, new Response.Listener<JSONObject>() {
+            @Override
+            public void onResponse(JSONObject response) {
+                try {
+                    JSONArray results = response.getJSONArray("results");
+                    for (int i = 0; i < results.length(); i++) {
+                        JSONObject result = results.getJSONObject(i);
+                        String name = result.getString("name");
+                        // adding pokemon to the original complete list
+                        pokemon.add(new Pokemon(
+                                name.substring(0, 1).toUpperCase() + name.substring(1),
+                                result.getString("url")
+                        ));
+                    }
+                    // initial filtered and complete list
+                    filtered = pokemon;
+                    notifyDataSetChanged();
+                } catch (JSONException e) {
+                    Log.e("cs50", "Json error", e);
+                }
+            }
+        }, new Response.ErrorListener() {
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                Log.e("cs50", "Pokemon list error", error);
+            }
+        });
+
+        requestQueue.add(request);
+    }
+
+    /**
+     * Inner class responsilbe to manage selection of pokemon
+     * whit a listerner to clicks
+     */
     public static class PokedexViewHolder extends RecyclerView.ViewHolder {
         public LinearLayout containerView;
         public TextView textView;
@@ -61,6 +118,9 @@ public class PokedexAdapter extends RecyclerView.Adapter<PokedexAdapter.PokedexV
         }
     }
 
+    /**
+     * Inner class that performs filter
+     */
     private class PokemonFilter extends Filter {
         @Override
         protected FilterResults performFiltering(CharSequence constraint) {
@@ -83,43 +143,6 @@ public class PokedexAdapter extends RecyclerView.Adapter<PokedexAdapter.PokedexV
             filtered = (ArrayList<Pokemon>) results.values;
             notifyDataSetChanged();
         }
-    }
-
-    PokedexAdapter(Context context) {
-        requestQueue = Volley.newRequestQueue(context);
-        loadPokemon();
-    }
-
-    public void loadPokemon() {
-        String url = "https://pokeapi.co/api/v2/pokemon?limit=151";
-        JsonObjectRequest request = new JsonObjectRequest(Request.Method.GET, url, null, new Response.Listener<JSONObject>() {
-            @Override
-            public void onResponse(JSONObject response) {
-                try {
-                    JSONArray results = response.getJSONArray("results");
-                    for (int i = 0; i < results.length(); i++) {
-                        JSONObject result = results.getJSONObject(i);
-                        String name = result.getString("name");
-                        pokemon.add(new Pokemon(
-                                name.substring(0, 1).toUpperCase() + name.substring(1),
-                                result.getString("url")
-                        ));
-                    }
-                    // initial filtered and complete list
-                    filtered = pokemon;
-                    notifyDataSetChanged();
-                } catch (JSONException e) {
-                    Log.e("cs50", "Json error", e);
-                }
-            }
-        }, new Response.ErrorListener() {
-            @Override
-            public void onErrorResponse(VolleyError error) {
-                Log.e("cs50", "Pokemon list error", error);
-            }
-        });
-
-        requestQueue.add(request);
     }
 
     @NonNull
